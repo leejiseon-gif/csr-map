@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CSR AI 시장 포지셔닝 맵 (시트 연동)</title>
+<style>
+  :root{
+    --bg:#0b0f1a;
+    --panel:#111827;
+    --panel2:#0f172a;
+    --line:#253049;
+    --text:#e5e7eb;
+    --muted:#9ca3af;
+    --muted2:#cbd5e1;
+    --accent:#60a5fa;
+    --accent2:#34d399;
+    --warn:#f59e0b;
+    --bad:#fb7185;
+    --white:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Arial; background:linear-gradient(180deg,#070a12, var(--bg)); color:var(--text);}
+  a{color:var(--accent)}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 16px 36px;}
+  .topbar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;margin-bottom:14px;}
+  .title h1{font-size:18px;margin:0 0 6px 0;}
+  .title p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.35}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;justify-content:flex-end}
+  .card{background:rgba(17,24,39,.78); border:1px solid rgba(37,48,73,.9); border-radius:14px; padding:12px 12px; box-shadow:0 10px 24px rgba(0,0,0,.25);}
+  .field{display:flex;flex-direction:column;gap:6px;min-width:210px}
+  .field label{font-size:11px;color:var(--muted)}
+  input, select, button{
+    height:36px;border-radius:10px;border:1px solid rgba(37,48,73,.9);
+    background:rgba(15,23,42,.85); color:var(--text); padding:0 10px; outline:none;
+  }
+  input::placeholder{color:#6b7280}
+  button{cursor:pointer; background:rgba(96,165,250,.16); border-color:rgba(96,165,250,.35)}
+  button:hover{background:rgba(96,165,250,.23)}
+  .mini{font-size:11px;color:var(--muted);line-height:1.4;margin-top:6px}
+  .grid2{display:grid;grid-template-columns:1fr;gap:14px}
+  @media (min-width: 980px){ .grid2{grid-template-columns:1fr 1fr;} }
+
+  /* Map */
+  .mapWrap{position:relative}
+  .mapHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .mapHeader h2{font-size:14px;margin:0}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:11.5px}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;border:1px solid rgba(37,48,73,.9);background:rgba(15,23,42,.6)}
+  .dot{width:10px;height:10px;border-radius:999px;background:var(--accent)}
+  .sq{width:10px;height:10px;border-radius:3px;background:var(--accent2)}
+  .map{
+    position:relative; height:520px; border-radius:16px;
+    background:linear-gradient(180deg, rgba(15,23,42,.7), rgba(15,23,42,.45));
+    border:1px solid rgba(37,48,73,.9);
+    overflow:hidden;
+  }
+  .axisLabel{
+    position:absolute; font-size:12px; color:var(--muted2); font-weight:600;
+    text-shadow:0 2px 10px rgba(0,0,0,.35);
+  }
+  .axisSub{
+    position:absolute; font-size:11px; color:var(--muted); max-width:44%;
+    line-height:1.35;
+  }
+  .xLeft{left:14px; bottom:10px}
+  .xRight{right:14px; bottom:10px;text-align:right}
+  .yTop{left:14px; top:10px}
+  .yBottom{left:14px; bottom:46px}
+  .gridLine{position:absolute; inset:0; pointer-events:none}
+  .gridLine::before, .gridLine::after{
+    content:""; position:absolute; background:rgba(37,48,73,.75);
+  }
+  .gridLine::before{left:50%; top:0; width:1px; height:100%;}
+  .gridLine::after{top:50%; left:0; height:1px; width:100%;}
+  .quadTag{
+    position:absolute; font-size:11px; color:rgba(229,231,235,.8);
+    padding:6px 10px; border-radius:999px; border:1px solid rgba(37,48,73,.9);
+    background:rgba(17,24,39,.55);
+  }
+  .q1{left:14px; top:46px}
+  .q2{right:14px; top:46px}
+  .q3{left:14px; bottom:86px}
+  .q4{right:14px; bottom:86px}
+
+  /* Buttons */
+  .node{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:0 10px; height:30px; max-width:180px;
+    border:1px solid rgba(255,255,255,.15);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    box-shadow:0 8px 18px rgba(0,0,0,.25);
+    transition:transform .12s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease;
+    user-select:none;
+  }
+  .node.map1{border-radius:999px;}
+  .node.map2{border-radius:10px;}
+  .node:hover{transform:translate(-50%,-50%) scale(1.06); border-color:rgba(96,165,250,.55); background:rgba(96,165,250,.16); box-shadow:0 10px 22px rgba(0,0,0,.35);}
+  .node.map2:hover{border-color:rgba(52,211,153,.55); background:rgba(52,211,153,.14);}
+  .node.active{transform:translate(-50%,-50%) scale(1.08); border-color:rgba(255,255,255,.55); background:rgba(255,255,255,.12);}
+  .node.map1.active{border-color:rgba(96,165,250,.8); background:rgba(96,165,250,.22);}
+  .node.map2.active{border-color:rgba(52,211,153,.8); background:rgba(52,211,153,.20);}
+
+  /* Tooltip (pin-able modal) */
+  .tooltip{
+    position:absolute; z-index:20; width:min(360px, 86vw);
+    border-radius:14px; border:1px solid rgba(37,48,73,.95);
+    background:rgba(17,24,39,.96);
+    box-shadow:0 18px 40px rgba(0,0,0,.45);
+    padding:12px 12px 10px;
+    display:none;
+  }
+  .tooltip.show{display:block}
+  .ttTop{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+  .ttTitle{font-weight:800;font-size:13px;line-height:1.25}
+  .ttClose{
+    width:28px;height:28px;border-radius:10px;border:1px solid rgba(37,48,73,.95);
+    background:rgba(15,23,42,.9); color:var(--text); cursor:pointer;
+  }
+  .ttClose:hover{background:rgba(255,255,255,.08)}
+  .ttMeta{font-size:11.5px;color:var(--muted);line-height:1.35}
+  .ttBody{margin-top:8px;font-size:12px;color:var(--text);line-height:1.45}
+  .ttRow{margin-top:6px;font-size:12px;color:var(--muted2);line-height:1.35}
+  .badge{display:inline-flex;align-items:center;gap:6px;margin-top:8px}
+  .chip{
+    font-size:11px;color:var(--text);
+    padding:4px 8px;border-radius:999px;
+    border:1px solid rgba(37,48,73,.9); background:rgba(15,23,42,.65);
+  }
+
+  .note{margin-top:10px;text-align:center;color:var(--muted);font-size:12px;line-height:1.45}
+  .foot{margin-top:14px;color:var(--muted);font-size:11.5px;line-height:1.5;text-align:center}
+  .hr{height:1px;background:rgba(37,48,73,.75);margin:10px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="title">
+      <h1>CSR AI 시장 포지셔닝 맵 (팀 내부용)</h1>
+      <p>구글시트(또는 엑셀→CSV) 데이터로 버튼이 자동 배치됩니다. 버튼을 <b>hover</b>하면 미리보기, <b>클릭</b>하면 툴팁이 <b>고정</b>됩니다(✕로 닫기).</p>
+    </div>
+
+    <div class="controls card">
+      <div class="field" style="min-width:320px">
+        <label>구글 시트 URL 또는 Sheet ID</label>
+        <input id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/... 또는 1AbC..."/>
+      </div>
+      <div class="field" style="min-width:120px">
+        <label>시트 탭</label>
+        <input id="sheetTab" value="DATA"/>
+      </div>
+      <div class="field" style="min-width:120px">
+        <label>불러오기</label>
+        <button id="loadBtn">시트에서 로드</button>
+      </div>
+      <div class="field" style="min-width:210px">
+        <label>검색(기업/프로그램)</label>
+        <input id="searchBox" placeholder="예: 삼성, 청소년, 소상공인"/>
+      </div>
+      <div class="field" style="min-width:160px">
+        <label>운영 방식</label>
+        <select id="f_oper">
+          <option value="">전체</option>
+          <option value="상시">상시</option>
+          <option value="시즌/기수/모집">시즌/기수/모집</option>
+          <option value="행사/컨퍼런스">행사/컨퍼런스</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:160px">
+        <label>제공 형태</label>
+        <select id="f_form">
+          <option value="">전체</option>
+          <option value="교육/훈련">교육/훈련</option>
+          <option value="경진/해커톤">경진/해커톤</option>
+          <option value="공간/랩/체험">공간/랩/체험</option>
+          <option value="지원/멘토링">지원/멘토링</option>
+          <option value="평가/자격/시험">평가/자격/시험</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:160px">
+        <label>취약 대상 태그</label>
+        <select id="f_vuln">
+          <option value="">전체</option>
+          <option value="Y">취약 대상 포함(Y)</option>
+          <option value="N">없음(N)</option>
+        </select>
+      </div>
+      <div class="mini">
+        시트가 보이도록 공개되어 있어야 해요(링크 있는 사람 보기). 권장: <b>파일 → 웹에 게시</b> 후 CSV로 로드.
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+
+    <div class="card mapWrap">
+      <div class="mapHeader">
+        <h2>MAP 1 — “대중 확산 ↔ 강한 전환” (누구나 해보고, 얼마나 깊게 바뀌나)</h2>
+        <div class="legend">
+          <span class="pill"><span class="dot"></span> Map1 버튼(동그라미)</span>
+        </div>
+      </div>
+
+      <div id="map1" class="map" data-map="map1">
+        <div class="gridLine"></div>
+        <div class="quadTag q1">체험·입문 (가볍게 맛보기)</div>
+        <div class="quadTag q2">대중 확산 (많이, 넓게)</div>
+        <div class="quadTag q3">전환 집중 (소수, 깊게)</div>
+        <div class="quadTag q4">강한 전환 (깊게 + 실전)</div>
+
+        <div class="axisLabel yTop">위쪽: “삶이 더 크게 바뀜”</div>
+        <div class="axisSub yTop" style="top:30px;">단순 체험이 아니라, 실제로 문제를 해결하거나 진로/일/활동으로 이어지게 돕는 정도</div>
+
+        <div class="axisLabel xLeft">왼쪽: “소수에게 깊게”</div>
+        <div class="axisSub xLeft">선발/기수/팀 프로젝트처럼 한 번에 참여자가 적지만, 밀도 있게 지원</div>
+
+        <div class="axisLabel xRight">오른쪽: “누구나 많이”</div>
+        <div class="axisSub xRight">전국민/많은 학생/많은 소상공인처럼 참여 문턱이 낮고 규모가 큰 형태</div>
+
+        <div id="tt1" class="tooltip" aria-hidden="true">
+          <div class="ttTop">
+            <div>
+              <div class="ttTitle" id="tt1_title"></div>
+              <div class="ttMeta" id="tt1_meta"></div>
+            </div>
+            <button class="ttClose" id="tt1_close" aria-label="닫기">✕</button>
+          </div>
+          <div class="ttBody" id="tt1_body"></div>
+          <div class="ttRow" id="tt1_more"></div>
+          <div class="badge" id="tt1_badges"></div>
+        </div>
+      </div>
+
+      <div class="note">
+        이 맵은 “우리가 <b>대중 확산형</b>으로 갈지, <b>강한 전환형</b>으로 갈지” 판단을 돕습니다.<br/>
+        같은 ‘교육’이라도, <b>대상 규모</b>와 <b>전환 깊이</b>가 다르면 위치가 달라져요.
+      </div>
+    </div>
+
+    <div class="card mapWrap">
+      <div class="mapHeader">
+        <h2>MAP 2 — “운영 지속 ↔ 취약 우선” (얼마나 오래, 누구를 먼저 돕나)</h2>
+        <div class="legend">
+          <span class="pill"><span class="sq"></span> Map2 버튼(네모)</span>
+        </div>
+      </div>
+
+      <div id="map2" class="map" data-map="map2">
+        <div class="gridLine"></div>
+        <div class="quadTag q1">행사·캠페인</div>
+        <div class="quadTag q2">상시 공개형</div>
+        <div class="quadTag q3">취약 집중 시즌형</div>
+        <div class="quadTag q4">취약 집중 상시형</div>
+
+        <div class="axisLabel yTop">위쪽: “도움이 더 필요한 사람을 먼저”</div>
+        <div class="axisSub yTop" style="top:30px;">장애, 도서·산간, 저소득, 자립준비청년처럼 “격차를 줄이는 목적”이 더 강한지</div>
+
+        <div class="axisLabel yBottom" style="bottom:42px;">아래쪽: “누구나 비슷하게”</div>
+        <div class="axisSub yBottom">특정 취약집단이 아니라, 전국민/일반 학생/일반 창작자 등 ‘역량 확산’이 중심인지</div>
+
+        <div class="axisLabel xLeft">왼쪽: “잠깐(행사·기수)”</div>
+        <div class="axisSub xLeft">모집해서 한 번 진행하거나, 시즌/기수로 운영되는 형태</div>
+
+        <div class="axisLabel xRight">오른쪽: “계속(상시 운영)”</div>
+        <div class="axisSub xRight">언제든 참여/수강/신청 가능. 매년 계속 굴러가는 프로그램</div>
+
+        <div id="tt2" class="tooltip" aria-hidden="true">
+          <div class="ttTop">
+            <div>
+              <div class="ttTitle" id="tt2_title"></div>
+              <div class="ttMeta" id="tt2_meta"></div>
+            </div>
+            <button class="ttClose" id="tt2_close" aria-label="닫기">✕</button>
+          </div>
+          <div class="ttBody" id="tt2_body"></div>
+          <div class="ttRow" id="tt2_more"></div>
+          <div class="badge" id="tt2_badges"></div>
+        </div>
+      </div>
+
+      <div class="note">
+        이 맵은 “우리가 <b>상시 공개형</b>으로 갈지, <b>취약 집중형</b>으로 갈지”를 빠르게 보게 해줍니다.<br/>
+        룰: <b>취약 대상 태그(Y)</b>가 있으면 자동으로 위쪽(취약 우선)으로 더 이동합니다.
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    팁) 시트 자동 연동(실시간)은 “이 HTML을 서버에 올리거나(내부 위키/드라이브 웹호스팅) + 시트를 웹에 게시”하면 가능합니다. 로컬 파일로 열면 일부 브라우저에서 로드가 막힐 수 있어요.
+  </div>
+
+</div>
+
+<script>
+/** =========================================================
+ *  0) 기대 컬럼 (구글시트 DATA 탭)
+ *  - 기업명, 프로그램군, 프로젝트명(세부), 대상, 한줄설명, 운영방식, 제공형태, 취약대상(Y/N), 대표링크
+ *  - Map1_X(0-100), Map1_Y(0-100), Map2_X(0-100), Map2_Y(0-100)
+ * ======================================================= */
+const SAMPLE_ROWS = [
+  {
+    "기업명":"카카오","프로그램군":"AI TOP 100","프로젝트명(세부)":"AI TOP 100","대상":"만 14세 이상 누구나",
+    "한줄설명":"AI와 함께 문제를 해결할 사람을 찾는 경진/실험 프로그램",
+    "운영방식":"시즌/기수/모집","제공형태":"경진/해커톤","취약대상(Y/N)":"N","대표링크":"https://www.kakaoimpact.org",
+    "Map1_X(0-100)":70,"Map1_Y(0-100)":65,"Map2_X(0-100)":35,"Map2_Y(0-100)":20
+  },
+  {
+    "기업명":"삼성","프로그램군":"갤럭시 AI 클래스(프로그램군)","프로젝트명(세부)":"@스쿨/@스토어/@디지털시티",
+    "대상":"유치원~초중고","한줄설명":"갤럭시 AI 기능으로 ‘AI를 써보는 체험 수업’ 제공",
+    "운영방식":"시즌/기수/모집","제공형태":"공간/랩/체험","취약대상(Y/N)":"N","대표링크":"",
+    "Map1_X(0-100)":78,"Map1_Y(0-100)":40,"Map2_X(0-100)":40,"Map2_Y(0-100)":15
+  },
+  {
+    "기업명":"SKT","프로그램군":"행복 AI 코딩스쿨(장애청소년)","프로젝트명(세부)":"행복 AI 코딩스쿨/챌린지",
+    "대상":"장애 청소년","한줄설명":"장애 유형별 맞춤 AI 코딩 교육 + 임직원 봉사단 보조",
+    "운영방식":"시즌/기수/모집","제공형태":"교육/훈련","취약대상(Y/N)":"Y","대표링크":"https://news.sktelecom.com/216855",
+    "Map1_X(0-100)":40,"Map1_Y(0-100)":55,"Map2_X(0-100)":35,"Map2_Y(0-100)":80
+  }
+];
+
+// ---------- Utilities ----------
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+function normStr(x){ return (x??"").toString().trim(); }
+function toNum(x, fallback=50){
+  const n = Number(x);
+  return Number.isFinite(n) ? n : fallback;
+}
+function getSheetIdOrUrl(raw){
+  const s = normStr(raw);
+  if(!s) return null;
+  if(s.includes("docs.google.com/spreadsheets")){
+    const m = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    return m ? m[1] : null;
+  }
+  // assume it's an ID
+  return s;
+}
+\
+function parseSheetInput(input){
+  // Accept:
+  // 1) Raw spreadsheet ID: 1AbC... ("/d/<ID>/")
+  // 2) Normal URL: https://docs.google.com/spreadsheets/d/<ID>/edit#gid=...
+  // 3) Published URL: https://docs.google.com/spreadsheets/d/e/<PUBID>/pubhtml?gid=...&single=true
+  const s = (input || "").trim();
+  if(!s) return null;
+
+  // If it's already an ID (no slashes, reasonably long)
+  if(!s.includes("/") && s.length >= 20){
+    return { kind:"id", id:s, gid:null };
+  }
+
+  // /d/<ID>/
+  let m = s.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if(m){
+    const gid = (s.match(/[?&#]gid=(\d+)/)||[])[1] || null;
+    return { kind:"id", id:m[1], gid };
+  }
+
+  // /d/e/<PUBID>/
+  m = s.match(/spreadsheets\/d\/e\/([a-zA-Z0-9-_]+)/);
+  if(m){
+    const gid = (s.match(/[?&#]gid=(\d+)/)||[])[1] || null;
+    return { kind:"pub", id:m[1], gid };
+  }
+
+  return null;
+}
+
+function buildCsvUrlFromInput(input, tabName){
+  const info = parseSheetInput(input);
+  if(!info) return null;
+
+  const tab = encodeURIComponent(tabName || "DATA");
+
+  if(info.kind === "id"){
+    // gviz -> CSV
+    return `https://docs.google.com/spreadsheets/d/${info.id}/gviz/tq?tqx=out:csv&sheet=${tab}`;
+  }
+
+  // Published endpoint (requires "Publish to web")
+  const gidPart = info.gid ? `&gid=${info.gid}` : "";
+  return `https://docs.google.com/spreadsheets/d/e/${info.id}/pub?single=true${gidPart}&output=csv`;
+}
+
+function parseCSV(text){
+  // lightweight CSV parser (handles quoted commas)
+  const rows = [];
+  const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").filter(l=>l.trim().length>0);
+  if(!lines.length) return rows;
+
+  function splitCsvLine(line){
+    const out=[]; let cur=""; let q=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){
+        if(q && line[i+1]==='"'){ cur+='"'; i++; }
+        else q=!q;
+      }else if(ch===',' && !q){
+        out.push(cur); cur="";
+      }else cur+=ch;
+    }
+    out.push(cur);
+    return out.map(s=>s.trim());
+  }
+
+  const header = splitCsvLine(lines[0]).map(h=>h.replace(/^"|"$/g,""));
+  for(let i=1;i<lines.length;i++){
+    const cols = splitCsvLine(lines[i]);
+    const obj = {};
+    header.forEach((h,idx)=>{
+      let v = cols[idx] ?? "";
+      v = v.replace(/^"|"$/g,"");
+      obj[h]=v;
+    });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function applyFilters(rows){
+  const q = normStr(document.getElementById("searchBox").value).toLowerCase();
+  const fOper = document.getElementById("f_oper").value;
+  const fForm = document.getElementById("f_form").value;
+  const fVuln = document.getElementById("f_vuln").value;
+  return rows.filter(r=>{
+    const company = normStr(r["기업명"]);
+    const program = normStr(r["프로그램군"]);
+    const target = normStr(r["대상"]);
+    const desc = normStr(r["한줄설명"]);
+    const oper = normStr(r["운영방식"]);
+    const form = normStr(r["제공형태"]);
+    const vuln = normStr(r["취약대상(Y/N)"]).toUpperCase();
+    if(q){
+      const blob = `${company} ${program} ${target} ${desc}`.toLowerCase();
+      if(!blob.includes(q)) return false;
+    }
+    if(fOper && oper!==fOper) return false;
+    if(fForm && form!==fForm) return false;
+    if(fVuln && vuln!==fVuln) return false;
+    return true;
+  });
+}
+
+// ---------- Rendering ----------
+let ALL_ROWS = [...SAMPLE_ROWS];
+let active = { map1:null, map2:null }; // active row id per map
+let uid = 0;
+
+function clearMap(mapEl){
+  mapEl.querySelectorAll(".node").forEach(n=>n.remove());
+}
+
+function showTooltip(mapKey, mapEl, nodeEl, row, pinned){
+  const tt = document.getElementById(mapKey==="map1" ? "tt1" : "tt2");
+  const titleEl = document.getElementById(mapKey==="map1" ? "tt1_title" : "tt2_title");
+  const metaEl  = document.getElementById(mapKey==="map1" ? "tt1_meta" : "tt2_meta");
+  const bodyEl  = document.getElementById(mapKey==="map1" ? "tt1_body" : "tt2_body");
+  const moreEl  = document.getElementById(mapKey==="map1" ? "tt1_more" : "tt2_more");
+  const badgesEl= document.getElementById(mapKey==="map1" ? "tt1_badges" : "tt2_badges");
+
+  titleEl.textContent = `${row["기업명"]} · ${row["프로그램군"]}`;
+  const target = normStr(row["대상"]);
+  const oper = normStr(row["운영방식"]);
+  const form = normStr(row["제공형태"]);
+  metaEl.textContent = [target, oper, form].filter(Boolean).join(" · ");
+
+  const oneline = normStr(row["한줄설명"]);
+  const detail = normStr(row["프로젝트명(세부)"]);
+  bodyEl.textContent = oneline || "설명 없음";
+  moreEl.textContent = detail ? `세부: ${detail}` : "";
+
+  badgesEl.innerHTML = "";
+  const vuln = normStr(row["취약대상(Y/N)"]).toUpperCase();
+  const chips = [];
+  if(vuln==="Y") chips.push("취약 대상");
+  if(oper) chips.push(oper);
+  if(form) chips.push(form);
+  chips.slice(0,4).forEach(t=>{
+    const c=document.createElement("span"); c.className="chip"; c.textContent=t; badgesEl.appendChild(c);
+  });
+
+  // position tooltip near node, stay inside container
+  const mapRect = mapEl.getBoundingClientRect();
+  const nodeRect = nodeEl.getBoundingClientRect();
+  const preferRight = nodeRect.left < (mapRect.left + mapRect.width*0.55);
+  const x = preferRight ? (nodeRect.right - mapRect.left + 10) : (nodeRect.left - mapRect.left - 10);
+  const y = (nodeRect.top - mapRect.top);
+  tt.style.left = preferRight ? `${clamp(x, 8, mapRect.width-8)}px` : `${clamp(x-tt.offsetWidth, 8, mapRect.width-8)}px`;
+
+  // compute after display
+  tt.classList.add("show");
+  const ttW = tt.offsetWidth, ttH = tt.offsetHeight;
+
+  let left = preferRight ? (nodeRect.right - mapRect.left + 10) : (nodeRect.left - mapRect.left - 10 - ttW);
+  let top  = y;
+  left = clamp(left, 8, mapRect.width - ttW - 8);
+  top  = clamp(top, 8, mapRect.height - ttH - 8);
+  tt.style.left = `${left}px`;
+  tt.style.top  = `${top}px`;
+  tt.setAttribute("aria-hidden","false");
+
+  // link in body (if exists)
+  const link = normStr(row["대표링크"]);
+  if(link){
+    const a = document.createElement("a");
+    a.href = link; a.target="_blank"; a.rel="noopener noreferrer";
+    a.textContent = "링크 열기";
+    a.style.display="inline-block";
+    a.style.marginTop="8px";
+    a.style.fontSize="12px";
+    bodyEl.appendChild(document.createElement("br"));
+    bodyEl.appendChild(a);
+  }
+
+  // pinned state handled by close only
+  if(!pinned){
+    // nothing special; it will be hidden on mouseleave if not active
+  }
+}
+
+function hideTooltip(mapKey){
+  const tt = document.getElementById(mapKey==="map1" ? "tt1" : "tt2");
+  tt.classList.remove("show");
+  tt.setAttribute("aria-hidden","true");
+}
+
+function setActive(mapKey, nodeEl, isActive){
+  // clear all nodes active
+  const mapEl = document.getElementById(mapKey);
+  mapEl.querySelectorAll(".node").forEach(n=>n.classList.remove("active"));
+  if(isActive && nodeEl) nodeEl.classList.add("active");
+}
+
+function placeNodesWithCollision(mapKey, rows){
+  const mapEl = document.getElementById(mapKey);
+  clearMap(mapEl);
+
+  // tooltip close
+  const closeBtn = document.getElementById(mapKey==="map1" ? "tt1_close":"tt2_close");
+  closeBtn.onclick = () => { active[mapKey]=null; hideTooltip(mapKey); setActive(mapKey,null,false); };
+
+  // create nodes
+  const nodes = rows.map(r=>{
+    const node = document.createElement("div");
+    node.className = `node ${mapKey}`;
+    node.textContent = normStr(r["기업명"]);
+    node.title = `${normStr(r["기업명"])} · ${normStr(r["프로그램군"])}`;
+    node.dataset.uid = r.__uid;
+
+    const x = toNum(r[mapKey==="map1" ? "Map1_X(0-100)" : "Map2_X(0-100)"], 50);
+    const y = toNum(r[mapKey==="map1" ? "Map1_Y(0-100)" : "Map2_Y(0-100)"], 50);
+
+    // initial
+    node.style.left = `${clamp(x, 2, 98)}%`;
+    node.style.top  = `${clamp(100-y, 2, 98)}%`; // y=100 => top 0
+
+    // hover preview (only when not pinned)
+    node.addEventListener("mouseenter", ()=>{
+      if(active[mapKey]) return;
+      setActive(mapKey, node, true);
+      showTooltip(mapKey, mapEl, node, r, false);
+    });
+    node.addEventListener("mouseleave", ()=>{
+      if(active[mapKey]) return;
+      setActive(mapKey, null, false);
+      hideTooltip(mapKey);
+    });
+
+    // click pin
+    node.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      if(active[mapKey]===r.__uid){
+        // already pinned -> do nothing (close by X only)
+        return;
+      }
+      active[mapKey]=r.__uid;
+      setActive(mapKey, node, true);
+      showTooltip(mapKey, mapEl, node, r, true);
+    });
+
+    mapEl.appendChild(node);
+    return {el:node, x, y, row:r};
+  });
+
+  // collision resolution in pixel space
+  // Convert current % to px and push apart. Keep near original anchor with spring.
+  const rect = mapEl.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+
+  const items = nodes.map(n=>{
+    const px = (clamp(n.x,2,98)/100)*W;
+    const py = (clamp(100-n.y,2,98)/100)*H;
+    return {
+      ...n,
+      ax:px, ay:py, // anchor
+      x:px, y:py
+    };
+  });
+
+  function bbox(it){
+    const w = it.el.offsetWidth;
+    const h = it.el.offsetHeight;
+    return {l:it.x-w/2, r:it.x+w/2, t:it.y-h/2, b:it.y+h/2, w, h};
+  }
+
+  const ITER = 180;
+  for(let k=0;k<ITER;k++){
+    // spring to anchor
+    for(const it of items){
+      it.x += (it.ax - it.x) * 0.06;
+      it.y += (it.ay - it.y) * 0.06;
+    }
+    // pairwise repel
+    for(let i=0;i<items.length;i++){
+      for(let j=i+1;j<items.length;j++){
+        const a=items[i], b=items[j];
+        const A=bbox(a), B=bbox(b);
+        const overlapX = Math.min(A.r,B.r) - Math.max(A.l,B.l);
+        const overlapY = Math.min(A.b,B.b) - Math.max(A.t,B.t);
+        if(overlapX>0 && overlapY>0){
+          // push along the smaller overlap axis
+          if(overlapX < overlapY){
+            const push = (overlapX/2) + 2;
+            if(a.x < b.x){ a.x -= push; b.x += push; } else { a.x += push; b.x -= push; }
+          }else{
+            const push = (overlapY/2) + 2;
+            if(a.y < b.y){ a.y -= push; b.y += push; } else { a.y += push; b.y -= push; }
+          }
+        }
+      }
+    }
+    // keep inside bounds
+    for(const it of items){
+      const w = it.el.offsetWidth, h=it.el.offsetHeight;
+      it.x = clamp(it.x, w/2+6, W - w/2-6);
+      it.y = clamp(it.y, h/2+6, H - h/2-6);
+    }
+  }
+
+  // apply final positions
+  for(const it of items){
+    it.el.style.left = `${(it.x/W)*100}%`;
+    it.el.style.top  = `${(it.y/H)*100}%`;
+  }
+
+  // click outside does NOT close pinned (요구사항: X로만 닫기)
+}
+
+function normalizeRows(rawRows){
+  // Accept two schemas:
+  // A) HTML 기본 스키마: 기업명/프로그램군/프로젝트명(세부)/대상/한줄설명/운영방식/제공형태/취약대상(Y/N)/대표링크 + Map*_X/Y
+  // B) 팀 시트(DB 템플릿) 스키마: 기업(표시명)/프로그램군(시장맵 단위)/세부프로그램 목록/대상(요약)/한줄설명(tooltip)/운영방식(상시/시즌/혼합)/제공형태/취약태그(있음/없음)/대표링크 + Map*_X/Y
+  function std(r){
+    const out = {...r};
+
+    // 기업 / 프로그램
+    if(!out["기업명"] && out["기업(표시명)"]) out["기업명"] = out["기업(표시명)"];
+    if(!out["프로그램군"] && out["프로그램군(시장맵 단위)"]) out["프로그램군"] = out["프로그램군(시장맵 단위)"];
+
+    // 세부/설명/성과
+    if(!out["프로젝트명(세부)"] && out["세부프로그램 목록(세미콜론)"]) out["프로젝트명(세부)"] = out["세부프로그램 목록(세미콜론)"];
+    if(!out["대상"] && out["대상(요약)"]) out["대상"] = out["대상(요약)"];
+    if(!out["한줄설명"] && out["한줄설명(tooltip)"]) out["한줄설명"] = out["한줄설명(tooltip)"];
+    if(!out["프로젝트명(세부)"] && out["프로젝트명(세부/툴팁)"]) out["프로젝트명(세부)"] = out["프로젝트명(세부/툴팁)"];
+    if(!out["한줄설명"] && out["한줄설명(툴팁)"]) out["한줄설명"] = out["한줄설명(툴팁)"];
+
+    // 운영방식/제공형태/취약
+    if(!out["운영방식"] && out["운영방식(상시/시즌/혼합)"]) out["운영방식"] = out["운영방식(상시/시즌/혼합)"];
+    if(out["운영방식"]==="시즌") out["운영방식"]="시즌/기수/모집";
+    if(out["운영방식"]==="혼합") out["운영방식"]="시즌/기수/모집";
+    if(out["운영방식"]==="행사") out["운영방식"]="행사/컨퍼런스";
+
+    if(!out["제공형태"] && out["제공형태(필터)"]) out["제공형태"]=out["제공형태(필터)"];
+
+    if(!out["취약대상(Y/N)"] && out["취약태그(있음/없음)"]) out["취약대상(Y/N)"] = (out["취약태그(있음/없음)"]==="있음" ? "Y":"N");
+    if(!out["취약대상(Y/N)"] && out["취약대상태그"]) out["취약대상(Y/N)"] = (out["취약대상태그"]==="있음" ? "Y":"N");
+
+    if(!out["대표링크"] && out["대표링크"]) out["대표링크"] = out["대표링크"];
+    if(!out["대표링크"] && out["링크(대표)"]) out["대표링크"] = out["링크(대표)"];
+
+    // One-line fallback
+    if(!out["한줄설명"] && out["설명(요약)"]) out["한줄설명"] = out["설명(요약)"];
+    if(!out["한줄설명"] && out["설명"]) out["한줄설명"] = out["설명"];
+
+    return out;
+  }
+
+  const out = rawRows.map(r=>{
+    const row = std(r);
+    row.__uid = (++uid).toString();
+
+    // normalize vuln
+    const v = normStr(row["취약대상(Y/N)"]).toUpperCase();
+    if(v==="TRUE") row["취약대상(Y/N)"]="Y";
+    if(v==="FALSE") row["취약대상(Y/N)"]="N";
+    if(v==="있음") row["취약대상(Y/N)"]="Y";
+    if(v==="없음") row["취약대상(Y/N)"]="N";
+    return row;
+  });
+
+  // rule: if vuln==Y, Map2_Y should drift upward a bit (help visuals)
+  out.forEach(r=>{
+    const vuln = normStr(r["취약대상(Y/N)"]).toUpperCase();
+    if(vuln==="Y"){
+      const y = toNum(r["Map2_Y(0-100)"], 50);
+      r["Map2_Y(0-100)"] = clamp(y + 10, 0, 100);
+    }
+  });
+  return out;
+}
+
+function render(){
+  const filtered = applyFilters(ALL_ROWS);
+  placeNodesWithCollision("map1", filtered);
+  placeNodesWithCollision("map2", filtered);
+}
+
+// ---------- Load from Google Sheet ----------
+async function loadFromSheet(){
+  const sheetId = getSheetIdOrUrl(document.getElementById("sheetUrl").value);
+  const tab = normStr(document.getElementById("sheetTab").value) || "DATA";
+  if(!sheetId){
+    alert("시트 URL 또는 Sheet ID를 입력해주세요.");
+    return;
+  }
+  const url = buildCsvUrl(sheetId, tab);
+  try{
+    const res = await fetch(url, {cache:"no-store"});
+    if(!res.ok) throw new Error("fetch failed");
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if(!rows.length) throw new Error("empty");
+    ALL_ROWS = normalizeRows(rows);
+    active.map1=null; active.map2=null;
+    hideTooltip("map1"); hideTooltip("map2");
+    render();
+  }catch(e){
+    console.error(e);
+    alert("시트 로드에 실패했어요.\n- 시트가 공개(링크 있는 사람 보기)인지\n- 시트 탭 이름이 맞는지\n- (권장) '웹에 게시' 상태인지 확인해주세요.");
+  }
+}
+
+// ---------- Wire up ----------
+document.getElementById("loadBtn").addEventListener("click", loadFromSheet);
+["searchBox","f_oper","f_form","f_vuln"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", ()=>{ active.map1=null; active.map2=null; hideTooltip("map1"); hideTooltip("map2"); render(); });
+  document.getElementById(id).addEventListener("change", ()=>{ active.map1=null; active.map2=null; hideTooltip("map1"); hideTooltip("map2"); render(); });
+});
+
+// initial
+ALL_ROWS = normalizeRows(SAMPLE_ROWS);
+render();
+
+// reflow on resize
+window.addEventListener("resize", ()=>{
+  // Keep pinned tooltip hidden on resize to avoid weird offsets
+  active.map1=null; active.map2=null;
+  hideTooltip("map1"); hideTooltip("map2");
+  render();
+});
+</script>
+</body>
+</html>
